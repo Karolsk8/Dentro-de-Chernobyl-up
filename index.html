@@ -1,1 +1,285 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dentro de Chernobyl</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=VT323&display=swap');
+        :root { --font-pixel: 'VT323', monospace; --font-title: 'Bebas Neue', cursive; }
+        body { margin: 0; padding: 0; overflow: hidden; background-color: #000; color: white; font-family: var(--font-pixel); }
+        * { box-sizing: border-box; }
+        #background-video { position: fixed; top: 50%; left: 50%; min-width: 100%; min-height: 100%; width: auto; height: auto; z-index: -1; transform: translateX(-50%) translateY(-50%); object-fit: cover; }
+        .main-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100vh; display: flex; flex-direction: column; justify-content: space-between; align-items: center; text-align: center; z-index: 2; }
+        .title-container { padding-top: 15vh; }
+        .menu-container { padding-bottom: 15vh; }
+        .game-title { font-family: var(--font-title); font-size: clamp(3rem, 8vw + 1rem, 10rem); color: #fff; text-shadow: 0 0 10px #ff0000, 0 0 20px #ff0000, 0 0 30px #d10000; }
+        .menu-option { font-size: clamp(1.4rem, 2.2vw, 2.4rem); margin: 10px 0; cursor: pointer; transition: all 0.2s ease-in-out; padding: 10px 20px; color: #fff; text-shadow: 2px 2px 0 #000; image-rendering: pixelated; font-smooth: never; -webkit-font-smoothing: none; }
+        .menu-option:hover { color: #39FF14; transform: scale(1.1); text-shadow: 2px 2px 0 #000, 0 0 8px #39FF14; }
+        #start-screen { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: #000; z-index: 10; display: flex; justify-content: center; align-items: center; cursor: pointer; transition: opacity 1.5s ease-out; }
+        #start-screen h2 { font-size: clamp(2.5rem, 5vw, 6rem); color: #ccc; text-shadow: 0 0 10px #fff; animation: pulse 2s infinite; font-family: var(--font-pixel); }
+        .hidden { display: none !important; }
+        .fullscreen-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 5; display: flex; justify-content: center; align-items: center; background-color: rgba(0,0,0,0.8); padding: 15px; }
+        .fullscreen-overlay.fade-black { background-color: rgba(0,0,0,1); }
+        .text-box { background-color: rgba(10, 10, 10, 0.8); border: 2px solid #555; backdrop-filter: blur(10px); padding: clamp(15px, 5vw, 40px); width: 100%; max-width: 900px; text-align: center; }
+        .text-box p { font-size: clamp(1.6rem, 3vw, 2.4rem); line-height: 1.7; white-space: pre-wrap; margin: 0; text-shadow: 2px 2px 4px #000; }
+        .text-box .prompt { font-size: clamp(1rem, 1.5vw, 1.5rem); color: #888; margin-top: 20px; animation: pulse 1.5s infinite; }
+        .popup-buttons { margin-top: 30px; display: flex; justify-content: center; gap: 20px; flex-wrap: wrap; }
+        .settings-row { display: flex; justify-content: space-between; align-items: center; margin: 25px 0; font-size: clamp(1.2rem, 2vw, 1.8rem); gap: 15px; }
+        .settings-row label { text-align: left; }
+        .settings-row input[type="range"] { width: 50%; min-width: 100px; cursor: pointer; }
+        .settings-row .lang-buttons button, .popup-buttons button { background-color: #333; border: 2px solid #777; color: white; padding: 10px 20px; font-family: var(--font-pixel); font-size: clamp(1.1rem, 1.8vw, 1.5rem); cursor: pointer; }
+        .settings-row .lang-buttons button.active, .popup-buttons button:hover { background-color: #777; border-color: #fff; }
+        #game-scene { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: #000; z-index: 50; }
+        #game-scene video { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); min-width: 100%; min-height: 100%; width: auto; height: auto; object-fit: cover; }
+        #dialogue-box { position: fixed; bottom: 2.5vh; left: 50%; width: 80vw; height: 25vh; z-index: 100; transform: translateX(-50%) translateY(200%); transition: transform 0.5s ease-out; background-color: rgba(0, 0, 0, 0.85); border: 3px solid #cccccc; box-shadow: 0 0 20px rgba(0,0,0,0.5); display: flex; align-items: center; padding: 20px; }
+        #dialogue-box.visible { transform: translateX(-50%) translateY(0); }
+        #dialogue-portrait { width: 96px; height: 96px; flex-shrink: 0; margin-right: 20px; border: 2px solid #aaaaaa; box-shadow: 0 0 10px rgba(255, 255, 255, 0.1); background-image: url('Gif.gif'); background-size: cover; background-position: center; }
+        .dialogue-content { width: 100%; height: 100%; display: flex; flex-direction: column; }
+        #dialogue-character-name { font-family: 'VT323', monospace; color: #ffffff; font-size: clamp(1.5rem, 3vw, 2.2rem); padding-bottom: 5px; margin-bottom: 10px; font-weight: bold; text-shadow: 1px 1px 2px rgba(255, 0, 0, 0.5); text-align: left; }
+        #dialogue-text { font-family: 'VT323', monospace; color: #FFFFFF; font-size: clamp(1.4rem, 2.8vw, 2rem); line-height: 1.4; white-space: pre-wrap; text-align: left; }
+        #dialogue-prompt { position: absolute; bottom: 15px; right: 30px; font-size: 2rem; animation: blink 1.5s infinite; }
+        @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
+        #scene-carro { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: #000; z-index: 50; }
+        #scene-carro video { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); min-width: 100%; min-height: 100%; width: auto; height: auto; object-fit: cover; }
+        #transition-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: #000; opacity: 0; z-index: 999; pointer-events: none; transition: opacity 1s ease-in-out; }
+        #transition-overlay.visible { opacity: 1; }
+        @media (max-width: 768px) { .settings-row { flex-direction: column; align-items: center; gap: 15px; } .settings-row label { text-align: center; } .settings-row input[type="range"] { width: 100%; } }
+        @media (max-width: 600px) { #dialogue-box { flex-direction: column; height: auto; padding: 10px; bottom: 10px; left: 5%; width: 90%; } #dialogue-portrait { width: 64px; height: 64px; margin-right: 0; margin-bottom: 10px; } #dialogue-character-name { text-align: center; } }
+    </style>
+</head>
+<body>
+    <audio id="background-music" loop></audio>
+    <audio id="sfx-hover"></audio>
+    <audio id="sfx-select"></audio>
+    <audio id="sfx-cancel"></audio>
+    <audio id="sfx-typing" loop></audio>
 
+    <div id="start-screen"><h2 data-lang-key="start_prompt">CLIQUE PARA INICIAR</h2></div>
+    <video autoplay muted loop id="background-video"><source src="tela inicial.mp4" type="video/mp4"></video>
+    <div class="main-overlay">
+        <div class="title-container"><h1 class="game-title">DENTRO DE CHERNOBYL</h1></div>
+        <div class="menu-container">
+            <div class="menu-option" data-lang-key="menu_new_game" id="btn-new-game">NOVO JOGO</div>
+            <div class="menu-option" data-lang-key="menu_load_game" id="btn-load-game">CARREGAR JOGO</div>
+            <div class="menu-option" data-lang-key="menu_settings" id="btn-settings">CONFIGURAÇÕES</div>
+            <div class="menu-option" data-lang-key="menu_exit" id="btn-exit">SAIR</div>
+        </div>
+    </div>
+    <div id="intro-overlay" class="fullscreen-overlay hidden"><div class="text-box"><p id="intro-text"></p><div id="intro-prompt" class="prompt hidden"></div></div></div>
+    <div id="popup-overlay" class="fullscreen-overlay hidden"><div class="text-box"><p id="popup-message"></p><div id="popup-buttons" class="popup-buttons"></div></div></div>
+    <div id="settings-menu" class="fullscreen-overlay hidden">
+        <div class="text-box">
+            <div class="settings-row"><label data-lang-key="settings_sfx">Efeitos Sonoros:</label><input type="range" id="sfx-volume" min="0" max="1" step="0.05"></div>
+            <div class="settings-row"><label data-lang-key="settings_music">Música:</label><input type="range" id="music-volume" min="0" max="1" step="0.05"></div>
+            <div class="settings-row"><label data-lang-key="settings_language">Idioma:</label><div class="lang-buttons"><button id="lang-pt">Português (Brasil)</button><button id="lang-en">English</button></div></div>
+            <div class="popup-buttons"><button id="settings-apply" data-lang-key="settings_apply">APLICAR E VOLTAR</button></div>
+        </div>
+    </div>
+    <div id="game-scene" class="hidden"><video id="game-scene-video" loop muted playsinline><source src="Gif-do-inicio.mp4" type="video/mp4"></video></div>
+    <div id="scene-carro" class="hidden"><video id="scene-carro-video" loop muted playsinline><source src="cena_carro.mp4" type="video/mp4"></video></div>
+    <div id="transition-overlay"></div>
+    <div id="dialogue-box" class="hidden"><div id="dialogue-portrait"></div><div class="dialogue-content"><div id="dialogue-character-name"></div><div id="dialogue-text"></div></div><div id="dialogue-prompt" class="hidden">▼</div></div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const dom = {
+                startScreen: document.getElementById('start-screen'), mainMenu: document.querySelector('.main-overlay'), btnNewGame: document.getElementById('btn-new-game'), btnLoadGame: document.getElementById('btn-load-game'), btnSettings: document.getElementById('btn-settings'), btnExit: document.getElementById('btn-exit'), introOverlay: document.getElementById('intro-overlay'), introText: document.getElementById('intro-text'), introPrompt: document.getElementById('intro-prompt'), popupOverlay: document.getElementById('popup-overlay'), popupMessage: document.getElementById('popup-message'), popupButtons: document.getElementById('popup-buttons'), settingsMenu: document.getElementById('settings-menu'), sfxVolumeSlider: document.getElementById('sfx-volume'), musicVolumeSlider: document.getElementById('music-volume'), btnSettingsApply: document.getElementById('settings-apply'), btnLangPt: document.getElementById('lang-pt'), btnLangEn: document.getElementById('lang-en'), gameScene: document.getElementById('game-scene'), gameSceneVideo: document.getElementById('game-scene-video'), dialogueBox: document.getElementById('dialogue-box'), dialoguePortrait: document.getElementById('dialogue-portrait'), dialogueCharacterName: document.getElementById('dialogue-character-name'), dialogueText: document.getElementById('dialogue-text'), dialoguePrompt: document.getElementById('dialogue-prompt'), sceneCarro: document.getElementById('scene-carro'), sceneCarroVideo: document.getElementById('scene-carro-video'), transitionOverlay: document.getElementById('transition-overlay')
+            };
+            const audio = {
+                bgm: document.getElementById('background-music'), sfx: { hover: document.getElementById('sfx-hover'), select: document.getElementById('sfx-select'), cancel: document.getElementById('sfx-cancel'), typing: document.getElementById('sfx-typing') }, musicVolume: 0.5, sfxVolume: 0.8,
+                init() { this.bgm.src = 'Chernobyl.mp3'; this.sfx.hover.src = 'beep-329314.mp3'; this.sfx.select.src = 'system-error-notice-132470.mp3'; this.sfx.cancel.src = 'windows-error-sound-effect-35894.mp3'; this.sfx.typing.src = 'video-game-speak-358238.mp3'; },
+                playSfx(soundKey) { if (this.sfx[soundKey]) { this.sfx[soundKey].currentTime = 0; this.sfx[soundKey].play().catch(e => {}); } },
+                stopSfx(soundKey) { if (this.sfx[soundKey]) { this.sfx[soundKey].pause(); this.sfx[soundKey].currentTime = 0; } },
+                setSfxVolume(volume) { this.sfxVolume = parseFloat(volume); for (const key in this.sfx) { this.sfx[key].volume = this.sfxVolume; } },
+                setMusicVolume(volume) { this.musicVolume = parseFloat(volume); this.bgm.volume = this.musicVolume; }
+            };
+            audio.init();
+
+            const languages = {
+                pt: {
+                    start_prompt: "CLIQUE PARA INICIAR", menu_new_game: "NOVO JOGO", menu_load_game: "CARREGAR JOGO", menu_settings: "CONFIGURAÇÕES", menu_exit: "SAIR", settings_sfx: "Efeitos Sonoros:", settings_music: "Música:", settings_language: "Idioma:", settings_apply: "APLICAR E VOLTAR", load_confirm: "Progresso encontrado. Deseja carregar?", load_not_found: "Nenhum jogo salvo encontrado.", exit_confirm: "Tem certeza que deseja sair?", btn_yes: "SIM", btn_no: "NÃO", btn_cancel: "CANCELAR", btn_exit_confirm: "SIM, SAIR",
+                    protagonist_story: ["Você não é daqui...", "Mas a Zona te reconhece.", "Era cientista.", "Acreditava em limites.", "Até ouvir o nome dela.", "Liska.", "Sobreviveu ao epicentro.", "Antes da explosão.", "Já estava lá.", "Nazistas a levaram.", "Não para destruir.", "Para acelerar.", "Gritou por três dias.", "Depois... parou.", "Porque começou a brilhar.", "Oficialmente, morreu em 1986.", "Mas ontem, a neve sussurrou:", "“Ainda estou viva.”", "Eu entro."],
+                    monologue: [ { character: "Leon", text: "Sei como a radiação começa.||| Silenciosa.| Invisível." }, { character: "Leon", text: "Primeiro, sua pele racha.| Depois, seus ossos crescem onde não devem." }, { character: "Leon", text: "Seus olhos apodrecem.| Sua mente grita sem parar." }, { character: " ", text: "||||||||||||" }, { character: "Leon", text: "Sei que ninguém volta igual.|| Muitos nem voltam vivos." }, { character: "Leon", text: "Alguns...|| nem são humanos no fim." }, { character: "Leon", text: "Mas se ela ainda está lá...| então eu entro." }, { character: "Leon", text: "Mesmo que a Zona me mude.|| Mesmo que eu pare de ser eu." } ]
+                },
+                en: {
+                    start_prompt: "CLICK TO START", menu_new_game: "NEW GAME", menu_load_game: "LOAD GAME", menu_settings: "SETTINGS", menu_exit: "EXIT", settings_sfx: "Sound Effects:", settings_music: "Music:", settings_language: "Language:", settings_apply: "APPLY AND BACK", load_confirm: "Saved data found. Load it?", load_not_found: "No saved game found.", exit_confirm: "Are you sure you want to exit?", btn_yes: "YES", btn_no: "NO", btn_cancel: "CANCEL", btn_exit_confirm: "YES, EXIT",
+                    protagonist_story: ["You don’t belong here...", "But the Zone recognizes you.", "You were a scientist.", "Believed in limits.", "Until you heard her name.", "Liska.", "Survived ground zero.", "Before the blast.", "She was already there.", "The Nazis took her.", "Not to destroy.", "To accelerate.", "Screamed for three days.", "Then… stopped.", "Because she started glowing.", "Officially, died in 1986.", "But yesterday, the snow whispered:", "“Still alive.”", "I go in."],
+                    
+                    // --- TRADUÇÃO DO MONÓLOGO ADICIONADA AQUI ---
+                    monologue: [ { character: "Leon", text: "I know how the radiation begins.||| Silent.| Invisible." }, { character: "Leon", text: "First, your skin cracks.| Then, your bones grow where they shouldn't." }, { character: "Leon", text: "Your eyes rot.| Your mind screams without end." }, { character: " ", text: "||||||||||||" }, { character: "Leon", text: "I know no one comes back the same.|| Many don't come back alive at all." }, { character: "Leon", text: "Some...|| aren't even human in the end." }, { character: "Leon", text: "But if she's still in there...| then I'm going in." }, { character: "Leon", text: "Even if the Zone changes me.|| Even if I stop being me." } ]
+                }
+            };
+            let currentLanguage = 'pt';
+            let isWriting = false;
+
+            function setLanguage(lang) {
+                currentLanguage = lang;
+                document.querySelectorAll('[data-lang-key]').forEach(element => {
+                    const key = languages[lang][element.getAttribute('data-lang-key')];
+                    if (key) element.textContent = key;
+                });
+                dom.btnLangPt.classList.toggle('active', lang === 'pt');
+                dom.btnLangEn.classList.toggle('active', lang === 'en');
+            }
+
+            function saveSettings() {
+                localStorage.setItem('chernobylGameSettings', JSON.stringify({ sfxVolume: audio.sfxVolume, musicVolume: audio.musicVolume, language: currentLanguage }));
+            }
+
+            function loadSettings() {
+                const settings = JSON.parse(localStorage.getItem('chernobylGameSettings'));
+                if (settings) {
+                    audio.setSfxVolume(settings.sfxVolume); audio.setMusicVolume(settings.musicVolume); setLanguage(settings.language);
+                } else { setLanguage('pt'); }
+                dom.sfxVolumeSlider.value = audio.sfxVolume; dom.musicVolumeSlider.value = audio.musicVolume;
+            }
+
+            function typeWriter(element, text, callback) {
+                isWriting = true;
+                let i = 0; element.textContent = ""; dom.dialoguePrompt.classList.add('hidden');
+                audio.sfx.typing.loop = true; audio.playSfx('typing');
+                function typeChar() {
+                    if (i < text.length) {
+                        const char = text.charAt(i++);
+                        if (char !== '|') { element.textContent += char; }
+                        setTimeout(typeChar, 50);
+                    } else {
+                        audio.stopSfx('typing'); isWriting = false;
+                        if (callback) callback();
+                    }
+                }
+                typeChar();
+            }
+
+            function showPopup(messageKey, buttonsConfig) {
+                dom.popupMessage.textContent = languages[currentLanguage][messageKey];
+                dom.popupButtons.innerHTML = '';
+                buttonsConfig.forEach(config => {
+                    const button = document.createElement('button');
+                    button.textContent = languages[currentLanguage][config.textKey];
+                    button.onclick = () => { audio.playSfx(config.sfx || 'select'); dom.popupOverlay.classList.add('hidden'); config.action(); };
+                    dom.popupButtons.appendChild(button);
+                });
+                dom.popupOverlay.classList.remove('hidden');
+            }
+
+            let protagonistStoryIndex = 0;
+            function playProtagonistIntro() {
+                if (protagonistStoryIndex < languages[currentLanguage].protagonist_story.length) {
+                    typeWriter(dom.introText, languages[currentLanguage].protagonist_story[protagonistStoryIndex], () => {
+                        dom.introPrompt.classList.remove('hidden');
+                        const next = () => {
+                            if (isWriting) return;
+                            dom.introPrompt.classList.add('hidden');
+                            playProtagonistIntro();
+                        };
+                        window.addEventListener('click', next, { once: true });
+                        window.addEventListener('keydown', next, { once: true });
+                    });
+                    protagonistStoryIndex++;
+                } else { handleFinalPrompt(); }
+            }
+
+            function handleFinalPrompt() {
+                dom.introOverlay.classList.add('hidden'); audio.bgm.pause();
+                dom.gameScene.classList.remove('hidden');
+                const sceneVideo = dom.gameSceneVideo;
+                sceneVideo.volume = audio.musicVolume; sceneVideo.muted = false;
+                sceneVideo.play().catch(e => console.error("Erro ao tocar vídeo da cena:", e));
+                const triggerDialogueOnce = () => {
+                    if (isWriting) return;
+                    startConversation(languages[currentLanguage].monologue);
+                };
+                dom.gameScene.addEventListener('click', triggerDialogueOnce, { once: true });
+                window.addEventListener('keydown', triggerDialogueOnce, { once: true });
+            }
+
+            let currentConversation = null;
+            let conversationIndex = 0;
+            function showNextLine() {
+                if (!currentConversation || conversationIndex >= currentConversation.length) {
+                    dom.dialogueBox.classList.remove('visible');
+                    dom.transitionOverlay.classList.add('visible');
+                    setTimeout(() => {
+                        dom.gameScene.classList.add('hidden');
+                        dom.sceneCarro.classList.remove('hidden');
+                        const carroVideo = dom.sceneCarroVideo;
+                        carroVideo.volume = audio.musicVolume;
+                        carroVideo.muted = false;
+                        carroVideo.play();
+                        setTimeout(() => {
+                            dom.transitionOverlay.classList.remove('visible');
+                        }, 500);
+                    }, 1000);
+                    return;
+                }
+                const line = currentConversation[conversationIndex];
+                dom.dialogueCharacterName.textContent = line.character;
+                typeWriter(dom.dialogueText, line.text, () => {
+                    dom.dialoguePrompt.classList.remove('hidden');
+                    const next = () => {
+                        if (isWriting) return;
+                        dom.dialoguePrompt.classList.add('hidden');
+                        showNextLine();
+                    };
+                    window.addEventListener('click', next, { once: true });
+                    window.addEventListener('keydown', next, { once: true });
+                });
+                conversationIndex++;
+            }
+
+            function startConversation(conversation) {
+                if (!conversation) return;
+                currentConversation = conversation; conversationIndex = 0;
+                dom.dialogueBox.classList.remove('hidden');
+                setTimeout(() => { dom.dialogueBox.classList.add('visible'); }, 10);
+                showNextLine();
+            }
+
+            dom.startScreen.addEventListener('click', () => {
+                dom.startScreen.style.opacity = '0';
+                setTimeout(() => dom.startScreen.classList.add('hidden'), 1500);
+                audio.bgm.play();
+            }, { once: true });
+
+            dom.btnNewGame.addEventListener('click', () => {
+                audio.playSfx('select'); dom.mainMenu.classList.add('hidden');
+                dom.introOverlay.classList.remove('hidden'); dom.introOverlay.classList.add('fade-black');
+                protagonistStoryIndex = 0; playProtagonistIntro();
+            });
+            
+            dom.btnLoadGame.addEventListener('click', () => {
+                audio.playSfx('select');
+                const savedGame = localStorage.getItem('chernobylSaveGame');
+                if (savedGame) {
+                    showPopup('load_confirm', [{ textKey: 'btn_yes', action: () => {} }, { textKey: 'btn_no', sfx: 'cancel', action: () => {} }]);
+                } else {
+                    showPopup('load_not_found', [{ textKey: 'btn_cancel', sfx: 'cancel', action: () => {} }]);
+                }
+            });
+
+            dom.btnSettings.addEventListener('click', () => { audio.playSfx('select'); dom.settingsMenu.classList.remove('hidden'); });
+            
+            dom.btnExit.addEventListener('click', () => {
+                audio.playSfx('select'); showPopup('exit_confirm', [{ textKey: 'btn_exit_confirm', action: () => window.close() }, { textKey: 'btn_cancel', sfx: 'cancel', action: () => {} }]);
+            });
+
+            dom.btnSettingsApply.addEventListener('click', () => { audio.playSfx('select'); saveSettings(); dom.settingsMenu.classList.add('hidden'); });
+            
+            dom.sfxVolumeSlider.addEventListener('input', (e) => audio.setSfxVolume(e.target.value));
+            dom.musicVolumeSlider.addEventListener('input', (e) => audio.setMusicVolume(e.target.value));
+            
+            dom.btnLangPt.addEventListener('click', () => setLanguage('pt'));
+            dom.btnLangEn.addEventListener('click', () => setLanguage('en'));
+
+            document.querySelectorAll('.menu-option').forEach(btn => {
+                btn.addEventListener('mouseenter', () => audio.playSfx('hover'));
+            });
+            
+            loadSettings();
+        });
+    </script>
+</body>
+</html>
